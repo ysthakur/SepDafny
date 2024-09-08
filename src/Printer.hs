@@ -196,13 +196,19 @@ isBase _ = False
 level :: Bop -> Int
 level Times = 7
 level Divide = 7
-level Plus = 5
-level Minus = 5
-level Conj = 1
-level Disj = 1
-level Implies = 1
+level Modulo = 7
+level Plus = 6
+level Minus = 6
+level Eq = 4
+level Neq = 4
+level Gt = 4
+level Ge = 4
+level Lt = 4
+level Le = 4
+level Conj = 3
+level Disj = 3
+level Implies = 2
 level Iff = 1
-level _ = 2 -- comparison operators
 
 -- | TODO: Implement pretty printing for variables
 instance PP Var where

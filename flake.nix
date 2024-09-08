@@ -24,7 +24,9 @@
           # Note that local packages are automatically included in `packages`
           # (defined by `defaults.packages` option).
           #
-          packages = { };
+          packages = {
+            parsec.source = "3.1.17.0";
+          };
           settings = {
             #  aeson = {
             #    check = false;

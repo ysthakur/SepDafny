@@ -17,6 +17,7 @@ common common-stanza
                      , pretty
                      , mtl
                      , process
+                     , parsec
   default-language:    GHC2021
 
 library

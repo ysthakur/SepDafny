@@ -5,6 +5,7 @@ module Main where
 -- locate the files.
 
 import Control.Monad
+import Data.List
 import DafnyParser
 import Printer
 import Syntax
@@ -13,6 +14,7 @@ import WP
 import Z3
 import Eval
 import Test.HUnit
+import Text.ParserCombinators.Parsec.Error
 
 main :: IO ()
 main = do
@@ -25,7 +27,7 @@ main = do
     do
       s <- parseDafnyFile (head a)
       case s of
-        Left err -> error err
+        Left err -> error (intercalate " " (map messageString (errorMessages err)))
         Right p -> do
           vcs <- forM (zip [1 ..] (vc p)) $ \(i, vcp) -> convertAndCheck vcp (head a ++ show i ++ ".smt2")
           --        putStrLn $ pretty vcp
