@@ -23,16 +23,17 @@ module DafnyParser where
 --
 
 -- import Control.Applicative
+
+import Control.Monad (guard)
 import Data.Char qualified as Char
-import Text.Parsec
-import Text.Parsec.Char
 import Printer
 import Syntax
 import System.IO qualified as IO
 import System.IO.Error qualified as IO
 import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
-import Control.Monad (guard)
-import Text.Parsec.Error (newErrorMessage, Message (Message))
+import Text.Parsec
+import Text.Parsec.Char
+import Text.Parsec.Error (Message (Message), newErrorMessage)
 import Text.Parsec.Pos (initialPos)
 
 type Parser = Parsec String ()
@@ -68,7 +69,7 @@ prop_roundtrip_stat s = parse statementP "" (pretty s) == Right s
 -- then skips over any whitespace characters occurring afterwards. HINT: you'll
 -- need the `space` parser from the [Parser](Parser.hs) library.
 wsP :: Parser a -> Parser a
-wsP p = p <* many space
+wsP p = p <* spaces
 
 test_wsP :: Test
 test_wsP =
@@ -82,7 +83,7 @@ test_wsP =
 -- and consumes any white space that follows. The last test case ensures
 -- that trailing whitespace is being treated appropriately.
 stringP :: String -> Parser ()
-stringP s = wsP (string s) *> pure ()
+stringP s = wsP (string' s) *> pure ()
 
 test_stringP :: Test
 test_stringP =
@@ -132,7 +133,7 @@ valueP = intValP <|> boolValP
 -- >>> parse (many intValP) "1 2\n 3"
 -- Right [IntVal 1,IntVal 2,IntVal 3]
 intValP :: Parser Value
-intValP = wsP $ fmap (IntVal . read) (many digit)
+intValP = wsP $ fmap (IntVal . read) (many1 digit)
 
 -- >>> parse (many boolValP) "true false\n true"
 -- Right [BoolVal True,BoolVal False,BoolVal True]
@@ -164,13 +165,13 @@ typeP =
 --
 -- However, this code *won't* work until you complete all the parts of this section.
 expP :: Parser Expression
-expP = conjP
+expP = l1P
   where
     l1P = l2P `chainl1` opAtLevel 1
     l2P = l3P `chainl1` opAtLevel 2
     l3P = l4P `chainl1` opAtLevel 3
-    l4P = l5P `chainl1` opAtLevel 4
-    l6P = l6P `chainl1` opAtLevel 6
+    l4P = l6P `chainl1` opAtLevel 4
+    l6P = l7P `chainl1` opAtLevel 6
     l7P = uopexpP `chainl1` opAtLevel 7
     uopexpP =
       baseP
@@ -201,7 +202,9 @@ op ops = flip Op2 <$> choice [constP s bop | (s, bop) <- ops]
 -- >>> parse varP "y[1]"
 -- Right (Proj "y" (Val (IntVal 1)))
 varP :: Parser Var
-varP = (Proj <$> nameP <*> brackets expP) <|> (Name <$> nameP)
+varP = do
+  name <- nameP
+  option (Name name) (Proj name <$> brackets expP)
 
 lenP :: Parser Expression
 lenP = Op1 Len . Var . Name <$> (nameP <* stringP ".Length")
@@ -240,11 +243,10 @@ nameP =
   let anyName =
         fmap (:) (choice [letter, char '_'])
           <*> many (choice [alphaNum, char '_'])
-    in do
-      name <- wsP anyName
-      guard $ notElem name reserved
-      return name
-
+   in do
+        name <- wsP anyName
+        guard $ notElem name reserved
+        return name
 
 -- Now write parsers for the unary and binary operators. Make sure you
 --  check out the Syntax module for the list of all possible
@@ -365,18 +367,21 @@ parseDafnyFile filename = do
 -}
 
 tParseFiles :: Test
-tParseFiles = "parse files" ~: TestList [
-                -- "abs"  ~: p "dafny/abs.dfy"  wAbs,
-                -- "minVal"  ~: p "dafny/findMinVal.dfy"  wMinVal,
-                -- "minIndex"  ~: p "dafny/findMinIndex.dfy"  wMinIndex,
-                -- "arraySpec" ~: p "dafny/arraySpec.dfy" wArraySpec,
-                "minMax"   ~: p "dafny/minMax.dfy" wMinMax
-              ] where
-  p fn ast = do
-    result <- parseDafnyFile fn
-    case result of
-      (Left _) -> assert False
-      (Right ast') -> assert (ast == ast')
+tParseFiles =
+  "parse files"
+    ~: TestList
+      [ -- "abs"  ~: p "dafny/abs.dfy"  wAbs,
+        -- "minVal"  ~: p "dafny/findMinVal.dfy"  wMinVal,
+        -- "minIndex"  ~: p "dafny/findMinIndex.dfy"  wMinIndex,
+        -- "arraySpec" ~: p "dafny/arraySpec.dfy" wArraySpec,
+        "minMax" ~: p "dafny/minMax.dfy" wMinMax
+      ]
+  where
+    p fn ast = do
+      result <- parseDafnyFile fn
+      case result of
+        (Left _) -> assert False
+        (Right ast') -> assert (ast == ast')
 
 -- | Unit Tests
 --      ---------
