@@ -38,7 +38,11 @@ type Name = String -- either the name of a variable or the name of a method
 type Binding = (Name, Type)
 
 -- | For simplicity, types in miniDafny can be integers, booleans, or arrays of integers.
-data Type = TInt | TBool | TArrayInt
+data Type
+  = TInt
+  | TBool
+  | TArray Type
+  | TNamed Name
   deriving (Eq, Ord, Show)
 
 -- | Specifications are logical statements that describe program behaviors.

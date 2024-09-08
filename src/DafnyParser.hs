@@ -139,7 +139,11 @@ boolValP = constP "true" (BoolVal True) <|> constP "false" (BoolVal False)
 --
 -- We provide you with the parser for types, which for miniDafny can only be "int", "bool", or "array<int>".
 typeP :: Parser Type
-typeP = constP "int" TInt <|> constP "bool" TBool <|> constP "array<int>" TArrayInt
+typeP =
+  constP "int" TInt
+    <|> constP "bool" TBool
+    <|> stringP "array" *> stringP "<" *> typeP <* stringP ">"
+    <|> fmap TNamed nameP
 
 -- | Parsing Expressions
 --     -------------------
@@ -333,19 +337,19 @@ parseDafnyFile = P.parseFromFile (const <$> methodP <*> P.eof)
    ----------------
 -}
 
--- tParseFiles :: Test
--- tParseFiles = "parse files" ~: TestList [
---                 "abs"  ~: p "dafny/abs.dfy"  wAbs,
---                 "minVal"  ~: p "dafny/findMinVal.dfy"  wMinVal,
---                 "minIndex"  ~: p "dafny/findMinIndex.dfy"  wMinIndex,
---                 "minMax"   ~: p "dafny/minMax.dfy"   wMinMax,
---                 "arraySpec" ~: p "dafny/arraySpec.dfy" wArraySpec
---               ] where
---   p fn ast = do
---     result <- parseDafnyFile fn
---     case result of
---       (Left _) -> assert False
---       (Right ast') -> assert (ast == ast')
+tParseFiles :: Test
+tParseFiles = "parse files" ~: TestList [
+                -- "abs"  ~: p "dafny/abs.dfy"  wAbs,
+                -- "minVal"  ~: p "dafny/findMinVal.dfy"  wMinVal,
+                -- "minIndex"  ~: p "dafny/findMinIndex.dfy"  wMinIndex,
+                -- "arraySpec" ~: p "dafny/arraySpec.dfy" wArraySpec,
+                "minMax"   ~: p "dafny/minMax.dfy" wMinMax
+              ] where
+  p fn ast = do
+    result <- parseDafnyFile fn
+    case result of
+      (Left _) -> assert False
+      (Right ast') -> assert (ast == ast')
 
 -- | Unit Tests
 --      ---------
@@ -395,5 +399,5 @@ test_stat =
 
 --------------------
 
-test_all :: IO Counts
-test_all = runTestTT $ TestList [test_comb, test_value, test_exp, test_stat] -- , tParseFiles ]
+test_all :: Test
+test_all = TestList [test_comb, test_value, test_exp, test_stat, tParseFiles]

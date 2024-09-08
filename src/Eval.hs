@@ -242,7 +242,7 @@ evalS (Decl (name, typ) expr) = do
    in case (v, typ) of
         (IntVal _, TInt) -> res
         (BoolVal _, TBool) -> res
-        (ArrayVal _, TArrayInt) -> res
+        (ArrayVal _, TArray TInt) -> res
         _ -> lift Nothing
 evalS (Assert (Predicate pred)) = do
   v <- evalE pred
@@ -336,7 +336,7 @@ test_loopToZero =
   "loopToZero"
     ~: TestList
       [ exec wLoopToZero [IntVal 5, IntVal 15]
-          ~?= Just (Map.fromList [("x", IntVal 4), ("y", IntVal 100), ("res", BoolVal True)])
+          ~?= Just (Map.fromList [("m",IntVal 5),("p",IntVal 15),("x",IntVal 0),("z",IntVal 10)])
       ]
 
 testAll :: Test

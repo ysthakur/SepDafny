@@ -154,7 +154,8 @@ instance PP Bop where
 instance PP Type where
   pp TInt = PP.text "int"
   pp TBool = PP.text "bool"
-  pp TArrayInt = PP.text "array<int>"
+  pp (TArray t) = PP.text "array<" <> pp t <> PP.text ">"
+  pp (TNamed name) = pp name
 
 -- | TODO: Implement pretty printing for bindings
 instance PP Binding where

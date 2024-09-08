@@ -19,7 +19,7 @@ main = do
   a <- getArgs
   if head a == "test" then
     do
-      runTestTT testAll
+      runTestTT $ TestList [ testAll, test_all ]
       return ()
   else
     do
