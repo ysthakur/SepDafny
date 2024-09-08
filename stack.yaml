@@ -6,3 +6,5 @@ extra-deps:
 - git: https://github.com/sweirich/haskelltester.git
   commit: 3aeeef9a67ce34040f12fa31c3b08248caeafbed
 # STUBWITH
+nix:
+  enable: true

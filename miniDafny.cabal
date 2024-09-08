@@ -29,8 +29,7 @@ library
                        DafnyParser,
                        Eval,
                        WP,
-                       Z3                     
-                       
+                       Z3
  hs-source-dirs: src
 
 executable miniDafny
@@ -49,4 +48,3 @@ executable miniDafny
                  QuickCheck >= 2.14.3,
                  process,
                  miniDafny
-

@@ -166,12 +166,12 @@ typeP =
 expP :: Parser Expression
 expP = conjP
   where
-    disjP = conjP `chainl1` op [("||", Disj)]
-    conjP = compP `chainl1` opAtLevel (level Conj)
-    compP = catP `chainl1` opAtLevel (level Gt)
-    catP = sumP `chainl1` opAtLevel (level Eq)
-    sumP = prodP `chainl1` opAtLevel (level Plus)
-    prodP = uopexpP `chainl1` opAtLevel (level Times)
+    l1P = l2P `chainl1` opAtLevel 1
+    l2P = l3P `chainl1` opAtLevel 2
+    l3P = l4P `chainl1` opAtLevel 3
+    l4P = l5P `chainl1` opAtLevel 4
+    l6P = l6P `chainl1` opAtLevel 6
+    l7P = uopexpP `chainl1` opAtLevel 7
     uopexpP =
       baseP
         <|> Op1 <$> uopP <*> uopexpP
