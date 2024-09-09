@@ -26,6 +26,7 @@ module DafnyParser where
 
 import Control.Monad (guard)
 import Data.Char qualified as Char
+import Data.Functor (($>))
 import Printer
 import Syntax
 import System.IO qualified as IO
@@ -74,7 +75,7 @@ wsP p = p <* spaces
 test_wsP :: Test
 test_wsP =
   TestList
-    [ parse (wsP letter) "" "a" ~?= Right 'a',
+    [ parse (wsP letter) "" "a\n" ~?= Right 'a',
       parse (many (wsP letter)) "" "a b \n   \t c" ~?= Right "abc"
     ]
 
@@ -83,7 +84,7 @@ test_wsP =
 -- and consumes any white space that follows. The last test case ensures
 -- that trailing whitespace is being treated appropriately.
 stringP :: String -> Parser ()
-stringP s = wsP (string' s) *> pure ()
+stringP s = wsP (string' s) $> ()
 
 test_stringP :: Test
 test_stringP =
@@ -96,7 +97,7 @@ test_stringP =
 -- | Define a parser that will accept a particular string `s`, returning a
 -- | given value `x`, and also and consume any white space that follows.
 constP :: String -> a -> Parser a
-constP s k = stringP s *> pure k
+constP s k = stringP s $> k
 
 test_constP :: Test
 test_constP =
@@ -131,14 +132,17 @@ valueP = intValP <|> boolValP
 --   by testing 'many' uses of the parser in a row.
 
 -- >>> parse (many intValP) "1 2\n 3"
--- Right [IntVal 1,IntVal 2,IntVal 3]
+-- No instance for (Show (String -> Either ParseError [Value]))
+--   arising from a use of `evalPrint'
+--   (maybe you haven't applied a function to enough arguments?)
+-- In a stmt of an interactive GHCi command: evalPrint it_aChK
 intValP :: Parser Value
 intValP = wsP $ fmap (IntVal . read) (many1 digit)
 
 -- >>> parse (many boolValP) "true false\n true"
 -- Right [BoolVal True,BoolVal False,BoolVal True]
 boolValP :: Parser Value
-boolValP = (keyword "true" *> pure (BoolVal True)) <|> (keyword "false" *> pure (BoolVal False))
+boolValP = (keyword "true" $> BoolVal True) <|> (keyword "false" $> BoolVal False)
 
 -- | At this point you should be able to run tests using the `prop_roundtrip_val` property.
 
@@ -165,9 +169,9 @@ typeP =
 --
 -- However, this code *won't* work until you complete all the parts of this section.
 expP :: Parser Expression
-expP = parserTrace "in expP" *> l1P
+expP = l1P
   where
-    l1P = parserTrace "in l1P" *> l2P `chainl1` opAtLevel 1
+    l1P = l2P `chainl1` opAtLevel 1
     l2P = l3P `chainl1` opAtLevel 2
     l3P = l4P `chainl1` opAtLevel 3
     l4P = l6P `chainl1` opAtLevel 4
@@ -184,10 +188,13 @@ expP = parserTrace "in expP" *> l1P
 
 -- | Parse an operator at a specified precedence level
 opAtLevel :: Int -> Parser (Expression -> Expression -> Expression)
-opAtLevel l = try (do
-  op <- bopP
-  guard (level op == l)
-  parserTrace ("success opAtLevel " ++ show l) *> pure (\lhs rhs -> Op2 lhs op rhs))
+opAtLevel l =
+  try
+    ( do
+        op <- bopP
+        guard (level op == l)
+        pure $ flip Op2 op
+    )
 
 op :: [(String, Bop)] -> Parser (Expression -> Expression -> Expression)
 op ops = flip Op2 <$> choice [constP s bop | (s, bop) <- ops]
@@ -408,7 +415,7 @@ test_exp =
         parse (many uopP) "" "- -" ~?= Right [Neg, Neg],
         parse (many bopP) "" "+ >= .." ~?= Right [Plus, Ge],
         parse expP "" "1" ~?= Right (Val (IntVal 1)),
-        parse (opAtLevel (level Plus) *> pure ()) "" "+" ~?= Right (),
+        parse (opAtLevel (level Plus) $> ()) "" "+" ~?= Right (),
         parse expP "" "1 + 2" ~?= Right (Op2 (Val (IntVal 1)) Plus (Val (IntVal 2))),
         parse expP "" "(1).bar.baz" ~?= Right (LHSExpr (Get (LHSExpr (Get (Val (IntVal 1)) "bar")) "baz"))
       ]
