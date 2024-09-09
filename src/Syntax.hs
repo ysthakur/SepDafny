@@ -45,8 +45,10 @@ data Type
   | TNamed Name
   deriving (Eq, Ord, Show)
 
--- | A class definition. No type parameters for now
-data ClassDef = ClassDef {name :: Name, fields :: [Binding], methods :: [Method]} deriving (Eq, Show)
+-- | A struct definition. No type parameters for now
+data StructDef = StructDef {structName :: Name, fields :: [Field]} deriving (Eq, Show)
+
+data Field = Field {mutable :: Bool, fieldName :: Name, typ :: Type} deriving (Eq, Show)
 
 -- | Specifications are logical statements that describe program behaviors.
 -- | They can be requires, ensures or modifies statements.

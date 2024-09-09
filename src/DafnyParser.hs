@@ -348,16 +348,15 @@ specP =
       stringP "modifies" *> fmap Modifies nameP
     ]
 
-classP :: Parser ClassDef
-classP =
-  keyword "class"
-    *> fmap ClassDef nameP
+structP :: Parser StructDef
+structP =
+  keyword "struct"
+    *> fmap StructDef nameP
     <*> (stringP "{" *> many fieldP)
-    <*> many methodP
     <* stringP "}"
 
-fieldP :: Parser Binding
-fieldP = keyword "var" *> bindingP
+fieldP :: Parser Field
+fieldP = (keyword "var" *> ((Field True) <$> nameP <* stringP ":" <*> typeP)) <|> ((Field False) <$> nameP <* stringP ":" <*> typeP)
 
 -- | Parsing Expressions and Files
 --     -----------------------------
@@ -452,8 +451,8 @@ test_stat =
 test_class =
   "parsing classes"
     ~: TestList
-      [ parse classP "" "class foo { var x: int method bar() {} }"
-          ~?= Right (ClassDef "foo" [("x", TInt)] [Method "bar" [] [] [] (Block [])])
+      [ parse structP "" "struct foo { var x: int y: bool }"
+          ~?= Right (StructDef "foo" [Field True "x" TInt, Field False "y" TBool])
       ]
 
 -- | Testing summary
