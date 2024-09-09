@@ -341,6 +341,17 @@ specP =
       stringP "modifies" *> fmap Modifies nameP
     ]
 
+classP :: Parser ClassDef
+classP =
+  keyword "class"
+    *> fmap ClassDef nameP
+    <*> (stringP "{" *> many fieldP)
+    <*> many methodP
+    <* stringP "}"
+
+fieldP :: Parser Binding
+fieldP = keyword "var" *> bindingP
+
 -- | Parsing Expressions and Files
 --     -----------------------------
 --
@@ -430,9 +441,16 @@ test_stat =
           ~?= Right (While (Predicate (Val (BoolVal True))) (Val (IntVal 0)) (Block []))
       ]
 
+test_class =
+  "parsing classes"
+    ~: TestList
+      [ parse classP "" "class foo { var x: int method bar() {} }"
+          ~?= Right (ClassDef "foo" [("x", TInt)] [Method "bar" [] [] [] (Block [])])
+      ]
+
 -- | Testing summary
 
 --------------------
 
 test_all :: Test
-test_all = TestList [test_comb, test_value, test_exp, test_stat, tParseFiles]
+test_all = TestList [test_comb, test_value, test_exp, test_stat, test_class, tParseFiles]

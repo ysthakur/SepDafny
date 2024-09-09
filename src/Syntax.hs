@@ -45,6 +45,9 @@ data Type
   | TNamed Name
   deriving (Eq, Ord, Show)
 
+-- | A class definition. No type parameters for now
+data ClassDef = ClassDef {name :: Name, fields :: [Binding], methods :: [Method]} deriving (Eq, Show)
+
 -- | Specifications are logical statements that describe program behaviors.
 -- | They can be requires, ensures or modifies statements.
 data Specification
@@ -142,7 +145,6 @@ data Bop
 -- Below are some test programs that you can use in this assignment. These programs can also be
 -- found in the corresponding files in the `dafny` folder. Please take a look at these files to
 -- familiarize yourself with the concrete syntax of MiniDafny
-
 var :: String -> Expression
 var name = LHSExpr $ Var name
 
