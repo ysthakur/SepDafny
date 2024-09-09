@@ -5,7 +5,7 @@
 -- read, especially when programs get long. Really, who wants to read this...
 --
 -- >>> wAbs
--- > Method "Abs" [("r",TInt)] [("absR",TInt)] [] (Block [If (Op2 (LHSExpr (Var "r")) Lt (Val (IntVal 0))) (Block [Assign (Var "absR") (Op1 Neg (LHSExpr (Var "r"))),Empty]) (Block [Assign (Var "absR") (LHSExpr (Var "r")),Empty])])
+-- > Method "Abs" [("r",TInt)] [("absR",TInt)] [] (Block [If (Op2 (LHSExpr (Var "r")) Lt (Val (IntVal 0))) (Block [Assign (Var "absR") (Op1 Neg (LHSExpr (Var "r")))]) (Block [Assign (Var "absR") (LHSExpr (Var "r"))])])
 --
 -- instead of this...
 --
@@ -220,7 +220,6 @@ instance PP Block where
 
 -- | TODO: Implement the rest of pretty printing for statements.
 instance PP Statement where
-  pp Empty = PP.empty
   pp (Decl binding expr) =
     PP.hsep
       [ PP.text "var",

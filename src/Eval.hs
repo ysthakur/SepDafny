@@ -276,7 +276,6 @@ evalS w@(While (Predicate invExpr) condExpr body) = do
       evalS w
     BoolVal False -> lift $ Just ()
     _ -> lift Nothing
-evalS Empty = lift $ Just ()
 
 -- |
 --

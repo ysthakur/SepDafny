@@ -82,7 +82,6 @@ data Statement
   | Assign LHSExpr Expression -- x := e
   | If Expression Block Block -- if e { s1 } else { s2 }
   | While Predicate Expression Block -- while e invariant p { s }
-  | Empty --
   deriving (Eq, Show)
 
 -- | Expressions are variables, literal constants, or operators applied
@@ -158,27 +157,23 @@ wMinMax =
             (Op2 (var "x") Lt (var "y"))
             ( Block
                 [ Assign (Var "min") (var "x"),
-                  Empty,
-                  Assign (Var "max") (var "y"),
-                  Empty
+                  Assign (Var "max") (var "y")
                 ]
             )
             ( Block
                 [ Assign (Var "max") (var "x"),
-                  Empty,
-                  Assign (Var "min") (var "y"),
-                  Empty
+                  Assign (Var "min") (var "y")
                 ]
             )
         ]
     )
 
-wLoopToZero = Method "LoopToZero" [("m", TInt), ("p", TInt)] [("x", TInt), ("z", TInt)] [Requires (Predicate (Op2 (var "m") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (var "p") Minus (var "m"))))] (Block [Assign (Var "x") (var "m"), Empty, Assign (Var "z") (var "p"), Empty, While (Predicate (Op2 (Op2 (var "x") Ge (Val (IntVal 0))) Conj (Op2 (Op2 (var "z") Minus (var "x")) Eq (Op2 (var "p") Minus (var "m"))))) (Op2 (var "x") Gt (Val (IntVal 0))) (Block [Assign (Var "z") (Op2 (var "z") Minus (Val (IntVal 1))), Empty, Assign (Var "x") (Op2 (var "x") Minus (Val (IntVal 1))), Empty])])
+wLoopToZero = Method "LoopToZero" [("m", TInt), ("p", TInt)] [("x", TInt), ("z", TInt)] [Requires (Predicate (Op2 (var "m") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (var "p") Minus (var "m"))))] (Block [Assign (Var "x") (var "m"), Assign (Var "z") (var "p"), While (Predicate (Op2 (Op2 (var "x") Ge (Val (IntVal 0))) Conj (Op2 (Op2 (var "z") Minus (var "x")) Eq (Op2 (var "p") Minus (var "m"))))) (Op2 (var "x") Gt (Val (IntVal 0))) (Block [Assign (Var "z") (Op2 (var "z") Minus (Val (IntVal 1))), Assign (Var "x") (Op2 (var "x") Minus (Val (IntVal 1)))])])
 
-wTwoLoops = Method "TwoLoops" [("a", TInt), ("b", TInt), ("c", TInt)] [("x", TInt), ("y", TInt), ("z", TInt)] [Requires (Predicate (Op2 (Op2 (Op2 (var "a") Gt (Val (IntVal 0))) Conj (Op2 (var "b") Gt (Val (IntVal 0)))) Conj (Op2 (var "c") Gt (Val (IntVal 0))))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (Op2 (var "a") Plus (var "b")) Plus (var "c"))))] (Block [Assign (Var "x") (Val (IntVal 0)), Empty, Assign (Var "y") (Val (IntVal 0)), Empty, Assign (Var "z") (var "c"), Empty, While (Predicate (Op2 (Op2 (Op2 (var "x") Le (var "a")) Conj (Op2 (var "y") Eq (Val (IntVal 0)))) Conj (Op2 (var "z") Eq (Op2 (Op2 (var "x") Plus (var "y")) Plus (var "c"))))) (Op2 (var "x") Lt (var "a")) (Block [Assign (Var "x") (Op2 (var "x") Plus (Val (IntVal 1))), Empty, Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1))), Empty]), While (Predicate (Op2 (Op2 (Op2 (var "y") Le (var "b")) Conj (Op2 (var "x") Eq (var "a"))) Conj (Op2 (var "z") Eq (Op2 (Op2 (var "a") Plus (var "y")) Plus (var "c"))))) (Op2 (var "y") Lt (var "b")) (Block [Assign (Var "y") (Op2 (var "y") Plus (Val (IntVal 1))), Empty, Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1))), Empty])])
+wTwoLoops = Method "TwoLoops" [("a", TInt), ("b", TInt), ("c", TInt)] [("x", TInt), ("y", TInt), ("z", TInt)] [Requires (Predicate (Op2 (Op2 (Op2 (var "a") Gt (Val (IntVal 0))) Conj (Op2 (var "b") Gt (Val (IntVal 0)))) Conj (Op2 (var "c") Gt (Val (IntVal 0))))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (Op2 (var "a") Plus (var "b")) Plus (var "c"))))] (Block [Assign (Var "x") (Val (IntVal 0)), Assign (Var "y") (Val (IntVal 0)), Assign (Var "z") (var "c"), While (Predicate (Op2 (Op2 (Op2 (var "x") Le (var "a")) Conj (Op2 (var "y") Eq (Val (IntVal 0)))) Conj (Op2 (var "z") Eq (Op2 (Op2 (var "x") Plus (var "y")) Plus (var "c"))))) (Op2 (var "x") Lt (var "a")) (Block [Assign (Var "x") (Op2 (var "x") Plus (Val (IntVal 1))), Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1)))]), While (Predicate (Op2 (Op2 (Op2 (var "y") Le (var "b")) Conj (Op2 (var "x") Eq (var "a"))) Conj (Op2 (var "z") Eq (Op2 (Op2 (var "a") Plus (var "y")) Plus (var "c"))))) (Op2 (var "y") Lt (var "b")) (Block [Assign (Var "y") (Op2 (var "y") Plus (Val (IntVal 1))), Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1)))])])
 
-wSquare = Method "Square" [("x", TInt)] [("z", TInt)] [Requires (Predicate (Op2 (var "x") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (var "x") Times (var "x"))))] (Block [Decl ("y", TInt) (Val (IntVal 0)), Empty, Assign (Var "z") (Val (IntVal 0)), Empty, While (Predicate (Op2 (Op2 (var "y") Le (var "x")) Conj (Op2 (var "z") Eq (Op2 (var "y") Times (var "x"))))) (Op2 (var "y") Lt (var "x")) (Block [Assign (Var "z") (Op2 (var "z") Plus (var "x")), Empty, Assign (Var "y") (Op2 (var "y") Plus (Val (IntVal 1))), Empty])])
+wSquare = Method "Square" [("x", TInt)] [("z", TInt)] [Requires (Predicate (Op2 (var "x") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "z") Eq (Op2 (var "x") Times (var "x"))))] (Block [Decl ("y", TInt) (Val (IntVal 0)), Assign (Var "z") (Val (IntVal 0)), While (Predicate (Op2 (Op2 (var "y") Le (var "x")) Conj (Op2 (var "z") Eq (Op2 (var "y") Times (var "x"))))) (Op2 (var "y") Lt (var "x")) (Block [Assign (Var "z") (Op2 (var "z") Plus (var "x")), Assign (Var "y") (Op2 (var "y") Plus (Val (IntVal 1)))])])
 
-wSquareRoot = Method "SquareRoot" [("x", TInt)] [("z", TInt)] [Requires (Predicate (Op2 (var "x") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (Op2 (Op2 (var "z") Times (var "z")) Le (var "x")) Conj (Op2 (var "x") Lt (Op2 (Op2 (var "z") Plus (Val (IntVal 1))) Times (Op2 (var "z") Plus (Val (IntVal 1)))))))] (Block [Assign (Var "z") (Val (IntVal 0)), Empty, While (Predicate (Op2 (Op2 (var "z") Times (var "z")) Le (var "x"))) (Op2 (Op2 (Op2 (var "z") Plus (Val (IntVal 1))) Times (Op2 (var "z") Plus (Val (IntVal 1)))) Le (var "x")) (Block [Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1))), Empty])])
+wSquareRoot = Method "SquareRoot" [("x", TInt)] [("z", TInt)] [Requires (Predicate (Op2 (var "x") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (Op2 (Op2 (var "z") Times (var "z")) Le (var "x")) Conj (Op2 (var "x") Lt (Op2 (Op2 (var "z") Plus (Val (IntVal 1))) Times (Op2 (var "z") Plus (Val (IntVal 1)))))))] (Block [Assign (Var "z") (Val (IntVal 0)), While (Predicate (Op2 (Op2 (var "z") Times (var "z")) Le (var "x"))) (Op2 (Op2 (Op2 (var "z") Plus (Val (IntVal 1))) Times (Op2 (var "z") Plus (Val (IntVal 1)))) Le (var "x")) (Block [Assign (Var "z") (Op2 (var "z") Plus (Val (IntVal 1)))])])
 
-wIntDiv = Method "IntDiv" [("m", TInt), ("n", TInt)] [("d", TInt), ("r", TInt)] [Requires (Predicate (Op2 (var "n") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "m") Eq (Op2 (Op2 (var "d") Times (var "n")) Plus (var "r")))), Ensures (Predicate (Op2 (Op2 (Val (IntVal 0)) Le (var "r")) Conj (Op2 (var "r") Lt (var "n"))))] (Block [Assign (Var "d") (Op2 (var "m") Divide (var "n")), Empty, Assign (Var "r") (Op2 (var "m") Modulo (var "n")), Empty])
+wIntDiv = Method "IntDiv" [("m", TInt), ("n", TInt)] [("d", TInt), ("r", TInt)] [Requires (Predicate (Op2 (var "n") Gt (Val (IntVal 0)))), Ensures (Predicate (Op2 (var "m") Eq (Op2 (Op2 (var "d") Times (var "n")) Plus (var "r")))), Ensures (Predicate (Op2 (Op2 (Val (IntVal 0)) Le (var "r")) Conj (Op2 (var "r") Lt (var "n"))))] (Block [Assign (Var "d") (Op2 (var "m") Divide (var "n")), Assign (Var "r") (Op2 (var "m") Modulo (var "n"))])

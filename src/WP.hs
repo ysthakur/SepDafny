@@ -181,7 +181,6 @@ class WP a where
 --      so we can simply use the loop invariant as that precondition, as you
 --      did on paper.
 instance WP Statement where
-  wp Empty p = p
   wp (Assign (Var var) e) p = subst p var e
   wp (Decl (var, _) e) p = subst p var e
   wp (If cond thenBody elseBody) p =
@@ -230,7 +229,7 @@ instance WP Block where
 --   y := y + 1;
 -- }
 wSquareWhile :: Statement
-wSquareWhile = While (Predicate (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x")))))) (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x"))) (Block [Assign (Var "z") (Op2 (LHSExpr (Var "z")) Plus (LHSExpr (Var "x"))), Empty, Assign (Var "y") (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))), Empty])
+wSquareWhile = While (Predicate (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x")))))) (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x"))) (Block [Assign (Var "z") (Op2 (LHSExpr (Var "z")) Plus (LHSExpr (Var "x"))), Assign (Var "y") (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1)))])
 
 -- | The post condition of Square
 -- z == x * x
