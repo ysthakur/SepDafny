@@ -305,8 +305,15 @@ statementP =
         <*> braces blockP
         <*> option (Block []) (keyword "else" *> braces blockP),
       fmap (flip While) (keyword "while" *> expP) <*> invariantP <*> braces blockP,
-      fmap Assign varP <* stringP ":=" <*> expP <* stringP ";"
+      assignStmtP
     ]
+
+assignStmtP :: Parser Statement
+assignStmtP = do
+  expr <- expP
+  case expr of
+    LHSExpr lhs -> stringP ":=" *> (Assign lhs <$> expP) <* stringP ";"
+    _ -> ExprStmt expr <$ stringP ";"
 
 invariantP :: Parser Predicate
 invariantP = option (Predicate (Val (BoolVal True))) (keyword "invariant" *> predicateP)
@@ -435,6 +442,7 @@ test_stat =
   "parsing statements"
     ~: TestList
       [ parse statementP "" "x := 3;" ~?= Right (Assign (Var "x") (Val (IntVal 3))),
+        parse statementP "" "2.foo := 3;" ~?= Right (Assign (Get (Val (IntVal 2)) "foo") (Val (IntVal 3))),
         parse statementP "" "if x { y := true; }"
           ~?= Right (If (LHSExpr (Var "x")) (Block [Assign (Var "y") (Val $ BoolVal True)]) (Block [])),
         parse statementP "" "while 0 { }"

@@ -85,6 +85,7 @@ data Statement
   | Assign LHSExpr Expression -- x := e
   | If Expression Block Block -- if e { s1 } else { s2 }
   | While Predicate Expression Block -- while e invariant p { s }
+  | ExprStmt Expression -- method call
   deriving (Eq, Show)
 
 -- | Expressions are variables, literal constants, or operators applied

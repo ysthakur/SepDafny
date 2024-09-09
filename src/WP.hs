@@ -191,6 +191,7 @@ instance WP Statement where
   wp (Assert _) p = error "Ignore assert for this project"
   wp (Assign (Proj _ _) _) p = error "Ignore arrays for this project"
   wp (Assign (Get _ _) _) p = error "Ignore field access for now"
+  wp (ExprStmt e) p = undefined
 
 -- | You will also need to implement weakest preconditions for blocks
 --   of statements, by repeatedly getting the weakest precondition
