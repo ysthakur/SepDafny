@@ -167,16 +167,17 @@ evalE (Op2 e1 o e2) = do
   v1 <- evalE e1
   v2 <- evalE e2
   lift $ evalOp2 o v1 v2
-evalE (Var (Name name)) = index name
-evalE (Var (Proj name indExpr)) = do
-  arrVal <- index name
-  indVal <- evalE indExpr
-  case (arrVal, indVal) of
-    (ArrayVal arr, IntVal i) ->
-      if i < length arr
-        then lift $ Just $ IntVal (arr !! i)
-        else lift Nothing
-    _ -> lift Nothing
+evalE (LHSExpr (Var name)) = index name
+evalE (LHSExpr _) = undefined
+-- evalE (LHSExpr (Proj name indExpr)) = do
+--   arrVal <- index name
+--   indVal <- evalE indExpr
+--   case (arrVal, indVal) of
+--     (ArrayVal arr, IntVal i) ->
+--       if i < length arr
+--         then lift $ Just $ IntVal (arr !! i)
+--         else lift Nothing
+--     _ -> lift Nothing
 evalE (Op1 o e) = do
   v <- evalE e
   case (o, v) of
@@ -249,22 +250,16 @@ evalS (Assert (Predicate pred)) = do
   case v of
     BoolVal True -> lift $ Just ()
     _ -> lift Nothing
-evalS (Assign (Name name) expr) = do
+evalS (Assign (Var name) expr) = do
   newVal <- evalE expr
   update name newVal
--- prevVal <- index name
--- let res = update name newVal
---  in case (prevVal, newVal) of
---       (IntVal _, IntVal _) -> res
---       (BoolVal _, BoolVal _) -> res
---       (ArrayVal _, ArrayVal _) -> res
---       _ -> lift Nothing
-evalS (Assign (Proj name ind) expr) = do
-  v <- evalE expr
-  i <- evalE ind
-  case v of
-    IntVal _ -> updateNth name v i
-    _ -> lift Nothing
+evalS (Assign _ _) = undefined
+-- evalS (Assign (Proj name ind) expr) = do
+--   v <- evalE expr
+--   i <- evalE ind
+--   case v of
+--     IntVal _ -> updateNth name v i
+--     _ -> lift Nothing
 evalS (If condExpr thenExpr elseExpr) = do
   cond <- evalE condExpr
   case cond of
@@ -319,7 +314,7 @@ test_simple_method =
               [("x", TInt), ("y", TInt)]
               [("res", TBool)]
               []
-              (Block [Assign (Name "res") (Op2 (Var (Name "x")) Le (Var (Name "y")))])
+              (Block [Assign (Var "res") (Op2 (LHSExpr (Var "x")) Le (LHSExpr (Var "y")))])
           )
           [IntVal 4, IntVal 100]
           ~?= Just (Map.fromList [("x", IntVal 4), ("y", IntVal 100), ("res", BoolVal True)])

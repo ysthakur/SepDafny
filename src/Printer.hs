@@ -5,7 +5,7 @@
 -- read, especially when programs get long. Really, who wants to read this...
 --
 -- >>> wAbs
--- > Method "Abs" [("r",TInt)] [("absR",TInt)] [] (Block [If (Op2 (Var (Name "r")) Lt (Val (IntVal 0))) (Block [Assign (Name "absR") (Op1 Neg (Var (Name "r"))),Empty]) (Block [Assign (Name "absR") (Var (Name "r")),Empty])])
+-- > Method "Abs" [("r",TInt)] [("absR",TInt)] [] (Block [If (Op2 (LHSExpr (Var "r")) Lt (Val (IntVal 0))) (Block [Assign (Var "absR") (Op1 Neg (LHSExpr (Var "r"))),Empty]) (Block [Assign (Var "absR") (LHSExpr (Var "r")),Empty])])
 --
 -- instead of this...
 --
@@ -175,7 +175,7 @@ instance PP Binding where
 --   We've implemented this logic for you, but there are is one thing
 --   missing: the array ".Length" operation is now not handled.
 instance PP Expression where
-  pp (Var v) = pp v
+  pp (LHSExpr e) = pp e
   pp (Val v) = pp v
   pp (Op1 Len v) = (if isBase v then pp v else PP.parens (pp v)) <> pp Len
   pp (Op1 o v) = pp o <+> if isBase v then pp v else PP.parens (pp v)
@@ -189,7 +189,7 @@ instance PP Expression where
 
 isBase :: Expression -> Bool
 isBase Val {} = True
-isBase Var {} = True
+isBase LHSExpr {} = True
 isBase Op1 {} = True
 isBase _ = False
 
@@ -210,12 +210,11 @@ level Disj = 3
 level Implies = 2
 level Iff = 1
 
--- | TODO: Implement pretty printing for variables
-instance PP Var where
-  pp (Name name) = PP.text name
+instance PP LHSExpr where
+  pp (Var name) = PP.text name
   pp (Proj arr ind) = pp arr <> PP.brackets (pp ind)
+  pp _ = undefined
 
--- | TODO: Implement pretty printing for blocks
 instance PP Block where
   pp (Block stmts) = PP.vcat $ map pp stmts
 

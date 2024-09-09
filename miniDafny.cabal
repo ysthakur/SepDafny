@@ -1,7 +1,7 @@
-cabal-version:       2.2
+cabal-version:       3.8
 name:                miniDafny
 version:             0.1.0.0
-synopsis:            Final Project for CSMC 433 
+synopsis:            CMSC499A Project
 homepage:            https://www.cs.umd.edu/class/spring2023/cmsc433/
 license-file:        LICENSE
 author:              University of Maryland
@@ -45,6 +45,4 @@ executable miniDafny
                        
   hs-source-dirs: src
   build-depends: QuickCheck >= 2.14.3,
-                 QuickCheck >= 2.14.3,
-                 process,
-                 miniDafny
+                 process

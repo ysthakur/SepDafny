@@ -76,11 +76,11 @@ class Subst a where
 -- you can either perform the substitution or not. Remember, we're ignoring
 -- arrays for this project, so we have already left this bit out.
 instance Subst Expression where
-  subst (Var (Proj _ _)) _ _ = error "Ignore arrays for this project"
-  subst (Var (Name name)) x e' =
+  subst (LHSExpr (Var name)) x e' =
     if name == x
       then e'
-      else Var (Name name)
+      else LHSExpr (Var name)
+  subst (LHSExpr _) _ _ = error "Ignore arrays for this project"
   subst (Val v) _ _ = Val v
   subst (Op1 op e) x e' = Op1 op $ subst e x e'
   subst (Op2 lhs op rhs) x e' = Op2 (subst lhs x e') op (subst rhs x e')
@@ -93,9 +93,9 @@ instance Subst Expression where
 wInv :: Expression
 wInv =
   Op2
-    (Op2 (Var (Name "y")) Le (Var (Name "x")))
+    (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x")))
     Conj
-    (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x"))))
+    (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x"))))
 
 -- | When propagating the loop invariant backwards inside the loop body,
 --   we substitute "y+1" for "y" and obtain:
@@ -104,14 +104,14 @@ wInv =
 --
 --   That is:
 wYPlus1 :: Expression
-wYPlus1 = Op2 (Var (Name "y")) Plus (Val (IntVal 1))
+wYPlus1 = Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))
 
 wInvSubstYY1 :: Expression
 wInvSubstYY1 =
   Op2
-    (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Le (Var (Name "x")))
+    (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Le (LHSExpr (Var "x")))
     Conj
-    (Op2 (Var (Name "z")) Eq (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Times (Var (Name "x"))))
+    (Op2 (LHSExpr (Var "z")) Eq (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Times (LHSExpr (Var "x"))))
 
 test_substExp :: Test
 test_substExp = TestList ["exp-subst" ~: subst wInv "y" wYPlus1 ~?= wInvSubstYY1]
@@ -181,16 +181,17 @@ class WP a where
 --      so we can simply use the loop invariant as that precondition, as you
 --      did on paper.
 instance WP Statement where
-  wp (Assert _) p = error "Ignore assert for this project"
-  wp (Assign (Proj _ _) _) p = error "Ignore arrays for this project"
   wp Empty p = p
-  wp (Assign (Name var) e) p = subst p var e
+  wp (Assign (Var var) e) p = subst p var e
   wp (Decl (var, _) e) p = subst p var e
   wp (If cond thenBody elseBody) p =
     let Predicate thenWP = wp thenBody p
      in let Predicate elseWP = wp elseBody p
          in Predicate $ Op2 (Op2 cond Implies thenWP) Conj (Op2 (Op1 Not cond) Implies elseWP)
   wp (While inv cond body) p = inv
+  wp (Assert _) p = error "Ignore assert for this project"
+  wp (Assign (Proj _ _) _) p = error "Ignore arrays for this project"
+  wp (Assign (Get _ _) _) p = error "Ignore field access for now"
 
 -- | You will also need to implement weakest preconditions for blocks
 --   of statements, by repeatedly getting the weakest precondition
@@ -229,20 +230,20 @@ instance WP Block where
 --   y := y + 1;
 -- }
 wSquareWhile :: Statement
-wSquareWhile = While (Predicate (Op2 (Op2 (Var (Name "y")) Le (Var (Name "x"))) Conj (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x")))))) (Op2 (Var (Name "y")) Lt (Var (Name "x"))) (Block [Assign (Name "z") (Op2 (Var (Name "z")) Plus (Var (Name "x"))), Empty, Assign (Name "y") (Op2 (Var (Name "y")) Plus (Val (IntVal 1))), Empty])
+wSquareWhile = While (Predicate (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x")))))) (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x"))) (Block [Assign (Var "z") (Op2 (LHSExpr (Var "z")) Plus (LHSExpr (Var "x"))), Empty, Assign (Var "y") (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))), Empty])
 
 -- | The post condition of Square
 -- z == x * x
 wWhilePost :: Expression
-wWhilePost = Op2 (Var (Name "z")) Eq (Op2 (Var (Name "x")) Times (Var (Name "x")))
+wWhilePost = Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "x")) Times (LHSExpr (Var "x")))
 
 -- | The two verification conditions it gives rise to --- (2) and (3) above.
 -- y <= x && z == y * x && y < x ==> (y + 1 <= x && z + x == (y + 1) * x)
 -- y <= x && z == y * x && ! (y < x) ==> z == x * x
 vcsWhile :: [Predicate]
 vcsWhile =
-  [ Predicate (Op2 (Op2 (Op2 (Op2 (Var (Name "y")) Le (Var (Name "x"))) Conj (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x"))))) Conj (Op2 (Var (Name "y")) Lt (Var (Name "x")))) Implies (Op2 (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Le (Var (Name "x"))) Conj (Op2 (Op2 (Var (Name "z")) Plus (Var (Name "x"))) Eq (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Times (Var (Name "x")))))),
-    Predicate (Op2 (Op2 (Op2 (Op2 (Var (Name "y")) Le (Var (Name "x"))) Conj (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x"))))) Conj (Op1 Not (Op2 (Var (Name "y")) Lt (Var (Name "x"))))) Implies (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "x")) Times (Var (Name "x")))))
+  [ Predicate (Op2 (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x"))))) Conj (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x")))) Implies (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Le (LHSExpr (Var "x"))) Conj (Op2 (Op2 (LHSExpr (Var "z")) Plus (LHSExpr (Var "x"))) Eq (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Times (LHSExpr (Var "x")))))),
+    Predicate (Op2 (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x"))))) Conj (Op1 Not (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x"))))) Implies (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "x")) Times (LHSExpr (Var "x")))))
   ]
 
 test_vcStmt :: Test
@@ -301,9 +302,9 @@ vc (Method _ _ _ specs (Block ss)) =
 -- y <= x && z == y * x && ! (y < x) ==> (z == x * x && true)
 vcSquare :: [Predicate]
 vcSquare =
-  [ Predicate (Op2 (Op2 (Op2 (Var (Name "x")) Gt (Val (IntVal 0))) Conj (Val (BoolVal True))) Implies (Op2 (Op2 (Val (IntVal 0)) Le (Var (Name "x"))) Conj (Op2 (Val (IntVal 0)) Eq (Op2 (Val (IntVal 0)) Times (Var (Name "x")))))),
-    Predicate (Op2 (Op2 (Op2 (Op2 (Var (Name "y")) Le (Var (Name "x"))) Conj (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x"))))) Conj (Op2 (Var (Name "y")) Lt (Var (Name "x")))) Implies (Op2 (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Le (Var (Name "x"))) Conj (Op2 (Op2 (Var (Name "z")) Plus (Var (Name "x"))) Eq (Op2 (Op2 (Var (Name "y")) Plus (Val (IntVal 1))) Times (Var (Name "x")))))),
-    Predicate (Op2 (Op2 (Op2 (Op2 (Var (Name "y")) Le (Var (Name "x"))) Conj (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "y")) Times (Var (Name "x"))))) Conj (Op1 Not (Op2 (Var (Name "y")) Lt (Var (Name "x"))))) Implies (Op2 (Op2 (Var (Name "z")) Eq (Op2 (Var (Name "x")) Times (Var (Name "x")))) Conj (Val (BoolVal True))))
+  [ Predicate (Op2 (Op2 (Op2 (LHSExpr (Var "x")) Gt (Val (IntVal 0))) Conj (Val (BoolVal True))) Implies (Op2 (Op2 (Val (IntVal 0)) Le (LHSExpr (Var "x"))) Conj (Op2 (Val (IntVal 0)) Eq (Op2 (Val (IntVal 0)) Times (LHSExpr (Var "x")))))),
+    Predicate (Op2 (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x"))))) Conj (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x")))) Implies (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Le (LHSExpr (Var "x"))) Conj (Op2 (Op2 (LHSExpr (Var "z")) Plus (LHSExpr (Var "x"))) Eq (Op2 (Op2 (LHSExpr (Var "y")) Plus (Val (IntVal 1))) Times (LHSExpr (Var "x")))))),
+    Predicate (Op2 (Op2 (Op2 (Op2 (LHSExpr (Var "y")) Le (LHSExpr (Var "x"))) Conj (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "y")) Times (LHSExpr (Var "x"))))) Conj (Op1 Not (Op2 (LHSExpr (Var "y")) Lt (LHSExpr (Var "x"))))) Implies (Op2 (Op2 (LHSExpr (Var "z")) Eq (Op2 (LHSExpr (Var "x")) Times (LHSExpr (Var "x")))) Conj (Val (BoolVal True))))
   ]
 
 test_vc_method :: Test

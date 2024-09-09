@@ -124,13 +124,14 @@ toSMT (Predicate p) =
         )
 
 getVars :: Expression -> [String]
-getVars (Var (Name n)) = [n]
 getVars (Val val) = []
 getVars (Op1 op e) = getVars e
 getVars (Op2 lhs op rhs) =
   let leftVars = getVars lhs
    in let rightVars = getVars rhs in leftVars ++ filter (`notElem` leftVars) rightVars
-getVars (Var (Proj _ _)) = undefined
+getVars (LHSExpr (Var n)) = [n]
+getVars (LHSExpr (Proj _ _)) = undefined
+getVars (LHSExpr (Get _ _)) = undefined
 
 class PP a where
   pp :: a -> Doc
@@ -163,11 +164,15 @@ instance PP Bop where
   pp Iff = PP.char '='
 
 instance PP Expression where
-  pp (Var (Name n)) = PP.text n
+  pp (LHSExpr e) = pp e
   pp (Val v) = pp v
   pp (Op1 op e) = PP.parens (pp op <+> pp e)
   pp (Op2 lhs op rhs) = PP.parens (pp op <+> pp lhs <+> pp rhs)
-  pp (Var (Proj _ _)) = undefined
+
+instance PP LHSExpr where
+  pp (Var n) = PP.text n
+  pp (Proj _ _) = undefined
+  pp (Get _ _) = undefined
 
 -- | The name of the z3 executable. Change this to whatever it is in your system:
 --   In unix based systems, this is just "z3".

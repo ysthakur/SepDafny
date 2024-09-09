@@ -30,7 +30,7 @@ import Printer
 import Syntax
 import System.IO qualified as IO
 import System.IO.Error qualified as IO
-import Test.HUnit (Assertion, Counts, Test (..), assert, runTestTT, (~:), (~?=))
+import Test.HUnit (Assertion, Counts, Test (..), assert, assertEqual, runTestTT, (~:), (~?=))
 import Text.Parsec
 import Text.Parsec.Char
 import Text.Parsec.Error (Message (Message), newErrorMessage)
@@ -174,13 +174,13 @@ expP = l1P
     l6P = l7P `chainl1` opAtLevel 6
     l7P = uopexpP `chainl1` opAtLevel 7
     uopexpP =
-      baseP
+      lhsP
         <|> Op1 <$> uopP <*> uopexpP
+    lhsP = baseP
     baseP =
-      lenP
-        <|> Var <$> varP
+      Val <$> valueP
         <|> parens expP
-        <|> Val <$> valueP
+        <|> LHSExpr <$> varP
 
 -- .Length here
 
@@ -198,16 +198,11 @@ op ops = flip Op2 <$> choice [constP s bop | (s, bop) <- ops]
 -- | We've also done this one for you.
 
 -- >>>  parse (many varP) "x y z"
--- Right [Name "x", Name "y", Name "z"]
+-- Right [Var "x", Var "y", Var "z"]
 -- >>> parse varP "y[1]"
 -- Right (Proj "y" (Val (IntVal 1)))
-varP :: Parser Var
-varP = do
-  name <- nameP
-  option (Name name) (Proj name <$> brackets expP)
-
-lenP :: Parser Expression
-lenP = Op1 Len . Var . Name <$> (nameP <* stringP ".Length")
+varP :: Parser LHSExpr
+varP = Var <$> nameP
 
 -- |
 -- Define an expression parser for names. Names can be any sequence of upper and
@@ -247,6 +242,9 @@ nameP =
         name <- wsP anyName
         guard $ notElem name reserved
         return name
+
+keyword :: String -> Parser ()
+keyword word = wsP $ try (string' word *> notFollowedBy (alphaNum <|> char '_'))
 
 -- Now write parsers for the unary and binary operators. Make sure you
 --  check out the Syntax module for the list of all possible
@@ -296,18 +294,17 @@ predicateP = fmap Predicate expP
 statementP :: Parser Statement
 statementP =
   choice
-    [ fmap Decl (stringP "var" *> bindingP <* stringP ":=") <*> expP,
-      fmap Assert (stringP "assert" *> predicateP),
-      fmap Assign varP <* stringP ":=" <*> expP,
-      fmap If (stringP "if" *> expP)
+    [ fmap Decl (keyword "var" *> bindingP <* stringP ":=") <*> expP <* stringP ";",
+      fmap Assert (keyword "assert" *> predicateP) <* stringP ";",
+      fmap If (keyword "if" *> expP)
         <*> braces blockP
-        <*> ((stringP "else" *> braces blockP) <|> pure (Block [])),
-      fmap (flip While) (stringP "while" *> expP) <*> (stringP "invariant" *> predicateP) <*> braces blockP,
-      stringP ";" *> pure Syntax.Empty
+        <*> option (Block []) (keyword "else" *> braces blockP),
+      fmap (flip While) (keyword "while" *> expP) <*> invariantP <*> braces blockP,
+      fmap Assign varP <* stringP ":=" <*> expP <* stringP ";"
     ]
 
 invariantP :: Parser Predicate
-invariantP = (stringP "invariant" *> predicateP) <|> pure (Predicate (Val (BoolVal True)))
+invariantP = option (Predicate (Val (BoolVal True))) (keyword "invariant" *> predicateP)
 
 -- | ... and one for blocks.
 blockP :: Parser Block
@@ -379,9 +376,7 @@ tParseFiles =
   where
     p fn ast = do
       result <- parseDafnyFile fn
-      case result of
-        (Left _) -> assert False
-        (Right ast') -> assert (ast == ast')
+      assertEqual (fn ++ " failed") (Right ast) result
 
 -- | Unit Tests
 --      ---------
@@ -410,7 +405,7 @@ test_value =
 test_exp =
   "parsing expressions"
     ~: TestList
-      [ parse (many varP) "" "x y z" ~?= Right [Name "x", Name "y", Name "z"],
+      [ parse (many varP) "" "x y z" ~?= Right [Var "x", Var "y", Var "z"],
         parse (many nameP) "" "x sfds _" ~?= Right ["x", "sfds", "_"],
         parse (many uopP) "" "- -" ~?= Right [Neg, Neg],
         parse (many bopP) "" "+ >= .." ~?= Right [Plus, Ge]
@@ -419,10 +414,9 @@ test_exp =
 test_stat =
   "parsing statements"
     ~: TestList
-      [ parse statementP "" ";" ~?= Right Syntax.Empty,
-        parse statementP "" "x := 3" ~?= Right (Assign (Name "x") (Val (IntVal 3))),
+      [ parse statementP "" "x := 3;" ~?= Right (Assign (Var "x") (Val (IntVal 3))),
         parse statementP "" "if x { y := true; }"
-          ~?= Right (If (Var (Name "x")) (Block [Assign (Name "y") (Val $ BoolVal True), Syntax.Empty]) (Block [])),
+          ~?= Right (If (LHSExpr (Var "x")) (Block [Assign (Var "y") (Val $ BoolVal True)]) (Block [])),
         parse statementP "" "while 0 { }"
           ~?= Right (While (Predicate (Val (BoolVal True))) (Val (IntVal 0)) (Block []))
       ]
