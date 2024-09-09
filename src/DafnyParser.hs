@@ -138,7 +138,7 @@ intValP = wsP $ fmap (IntVal . read) (many1 digit)
 -- >>> parse (many boolValP) "true false\n true"
 -- Right [BoolVal True,BoolVal False,BoolVal True]
 boolValP :: Parser Value
-boolValP = constP "true" (BoolVal True) <|> constP "false" (BoolVal False)
+boolValP = (keyword "true" *> pure (BoolVal True)) <|> (keyword "false" *> pure (BoolVal False))
 
 -- | At this point you should be able to run tests using the `prop_roundtrip_val` property.
 
@@ -165,9 +165,9 @@ typeP =
 --
 -- However, this code *won't* work until you complete all the parts of this section.
 expP :: Parser Expression
-expP = l1P
+expP = parserTrace "in expP" *> l1P
   where
-    l1P = l2P `chainl1` opAtLevel 1
+    l1P = parserTrace "in l1P" *> l2P `chainl1` opAtLevel 1
     l2P = l3P `chainl1` opAtLevel 2
     l3P = l4P `chainl1` opAtLevel 3
     l4P = l6P `chainl1` opAtLevel 4
@@ -176,20 +176,18 @@ expP = l1P
     uopexpP =
       lhsP
         <|> Op1 <$> uopP <*> uopexpP
-    lhsP = baseP
+    lhsP = fmap (foldl (\obj fields -> LHSExpr $ Get obj fields)) baseP <*> many (stringP "." *> nameP)
     baseP =
       Val <$> valueP
         <|> parens expP
         <|> LHSExpr <$> varP
 
--- .Length here
-
 -- | Parse an operator at a specified precedence level
 opAtLevel :: Int -> Parser (Expression -> Expression -> Expression)
-opAtLevel l = do
+opAtLevel l = try (do
   op <- bopP
   guard (level op == l)
-  return (\lhs rhs -> Op2 lhs op rhs)
+  parserTrace ("success opAtLevel " ++ show l) *> pure (\lhs rhs -> Op2 lhs op rhs))
 
 op :: [(String, Bop)] -> Parser (Expression -> Expression -> Expression)
 op ops = flip Op2 <$> choice [constP s bop | (s, bop) <- ops]
@@ -408,7 +406,11 @@ test_exp =
       [ parse (many varP) "" "x y z" ~?= Right [Var "x", Var "y", Var "z"],
         parse (many nameP) "" "x sfds _" ~?= Right ["x", "sfds", "_"],
         parse (many uopP) "" "- -" ~?= Right [Neg, Neg],
-        parse (many bopP) "" "+ >= .." ~?= Right [Plus, Ge]
+        parse (many bopP) "" "+ >= .." ~?= Right [Plus, Ge],
+        parse expP "" "1" ~?= Right (Val (IntVal 1)),
+        parse (opAtLevel (level Plus) *> pure ()) "" "+" ~?= Right (),
+        parse expP "" "1 + 2" ~?= Right (Op2 (Val (IntVal 1)) Plus (Val (IntVal 2))),
+        parse expP "" "(1).bar.baz" ~?= Right (LHSExpr (Get (LHSExpr (Get (Val (IntVal 1)) "bar")) "baz"))
       ]
 
 test_stat =
